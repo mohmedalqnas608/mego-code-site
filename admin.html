@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم ميجو اليوتيوبر</title>
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --dark: #0a0a0a;
+            --gray: #1a1a1a;
+        }
+        body {
+            background-color: var(--dark);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .admin-card {
+            background: var(--gray);
+            border: 2px solid var(--gold);
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px rgba(212, 175, 55, 0.1);
+            text-align: center;
+        }
+        h2 { color: var(--gold); margin-bottom: 25px; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .input-group { margin-bottom: 15px; text-align: right; }
+        label { display: block; margin-bottom: 5px; color: var(--gold); font-size: 14px; padding-right: 5px; }
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        input:focus, textarea:focus {
+            border-color: var(--gold);
+            outline: none;
+            background: #2a2a2a;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: var(--gold);
+            color: black;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.4s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-card">
+    <h2>👑 لوحة إدارة المحتوى</h2>
+    
+    <div class="input-group">
+        <label>مفتاح الأمان</label>
+        <input type="password" id="pass" placeholder="أدخل كلمة السر (mego2026)">
+    </div>
+
+    <div class="input-group">
+        <label>اسم الكورس أو الأداة</label>
+        <input type="text" id="title" placeholder="مثال: سورس كود تطبيق حساب العمر">
+    </div>
+
+    <div class="input-group">
+        <label>وصف المحتوى</label>
+        <textarea id="desc" rows="3" placeholder="اكتب نبذة مختصرة تجذب المستخدمين..."></textarea>
+    </div>
+
+    <div class="input-group">
+        <label>رابط التحميل المباشر</label>
+        <input type="text" id="url" placeholder="https://example.com/download">
+    </div>
+
+    <button onclick="uploadData()">🚀 نشر المحتوى الآن</button>
+    
+    <div id="status"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<script>
+    // إعدادات فايربيس الخاصة بك
+    const firebaseConfig = {
+        apiKey: "AIzaSyAnjhujvWjLe9Z2KsIm-82rRB-00oGiIRw",
+        authDomain: "mego-vip-site.firebaseapp.com",
+        projectId: "mego-vip-site",
+        databaseURL: "https://mego-vip-site-default-rtdb.firebaseio.com/"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function uploadData() {
+        const pass = document.getElementById('pass').value;
+        const title = document.getElementById('title').value;
+        const desc = document.getElementById('desc').value;
+        const url = document.getElementById('url').value;
+        const status = document.getElementById('status');
+
+        status.style.display = "block";
+
+        if(pass !== "mego2026") {
+            status.style.background = "#ff4d4d";
+            status.style.color = "white";
+            status.innerText = "❌ عذراً، مفتاح الأمان غير صحيح!";
+            return;
+        }
+
+        if(title && desc && url) {
+            status.style.background = "#D4AF37";
+            status.style.color = "black";
+            status.innerText = "⏳ جاري الربط والنشر...";
+
+            db.ref('courses').push({
+                title: title,
+                desc: desc,
+                url: url,
+                date: new Date().toLocaleDateString('ar-EG')
+            }).then(() => {
+                status.style.background = "#28a745";
+                status.style.color = "white";
+                status.innerText = "✅ تم النشر بنجاح! المحتوى متاح الآن.";
+                // مسح الخانات بعد النجاح
+                document.getElementById('title').value = '';
+                document.getElementById('desc').value = '';
+                document.getElementById('url').value = '';
+            }).catch(err => {
+                status.innerText = "خطأ في الاتصال: " + err.message;
+            });
+        } else {
+            status.style.background = "#ffc107";
+            status.style.color = "black";
+            status.innerText = "⚠️ يرجى ملء جميع الخانات!";
+        }
+    }
+</script>
+
+</body>
+</html>
