@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم MeGo Code 2 - المطور</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --neon-cyan: #00d2ff;
+            --deep-black: #020202;
+            --success-green: #00ff88;
+            --error-red: #ff3366;
+            --panel-bg: #0a0a0a;
+            --gold: #D4AF37;
+        }
+
+        body {
+            background: var(--deep-black);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container { width: 100%; max-width: 500px; animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .status-bar { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 25px; 
+            gap: 10px;
+            align-items: center;
+        }
+        .stat-chip {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 210, 255, 0.4);
+            padding: 8px 15px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.1);
+        }
+
+        .bell-container {
+            position: relative;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .bell-icon { font-size: 1.5rem; transition: 0.3s; }
+        .bell-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: var(--error-red);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 0 10px var(--error-red);
+            display: none;
+        }
+        .bell-active { animation: ring 0.5s ease infinite alternate; color: var(--gold); }
+        @keyframes ring { from { transform: rotate(-10deg); text-shadow: 0 0 10px var(--gold); } to { transform: rotate(10deg); } }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .dot-green { background: var(--success-green); box-shadow: 0 0 10px var(--success-green); }
+        .dot-red { background: var(--error-red); box-shadow: 0 0 10px var(--error-red); }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 210, 255, 0.15);
+            border-radius: 35px;
+            padding: 30px 20px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9);
+        }
+
+        .main-title {
+            text-align: center;
+            color: var(--neon-cyan);
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 25px rgba(0, 210, 255, 0.6);
+        }
+
+        .input-group { margin-bottom: 20px; }
+        label { color: var(--neon-cyan); font-size: 0.85rem; display: block; margin-bottom: 8px; text-align: right; }
+        input, select, textarea {
+            width: 100%; padding: 14px; background: #000; border: 1px solid #111; border-radius: 12px;
+            color: #fff; outline: none; box-sizing: border-box; font-size: 0.95rem; text-align: center;
+        }
+
+        .drop-zone {
+            border: 1.5px dashed rgba(0, 210, 255, 0.4);
+            border-radius: 20px; padding: 35px 15px; text-align: center; cursor: pointer;
+            margin-bottom: 25px; background: rgba(0, 210, 255, 0.01);
+        }
+
+        .qty-wrapper {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #000; border-radius: 12px; border: 1px solid #111; padding: 5px;
+        }
+        .qty-btn {
+            background: var(--neon-cyan); color: #000; border: none;
+            width: 35px; height: 35px; border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+
+        .btn-main {
+            width: 100%; padding: 18px; background: var(--neon-cyan); color: #000; border: none;
+            border-radius: 15px; font-weight: 900; font-size: 1.2rem; cursor: pointer; margin-top: 15px;
+        }
+
+        .order-item {
+            background: #111; border: 1px solid #222; border-radius: 15px; padding: 15px; margin-bottom: 15px; text-align: right;
+            border-right: 4px solid var(--neon-cyan);
+        }
+        .order-id-tag {
+            background: var(--neon-cyan); color: #000; padding: 2px 8px; border-radius: 5px; font-weight: bold; font-size: 0.8rem;
+        }
+        .order-btns { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-approve { background: var(--success-green); color: #000; border: none; padding: 8px; flex: 1; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-reject { background: var(--error-red); color: #fff; border: none; padding: 8px; flex: 1; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        .prog-container { display: none; margin-top: 20px; }
+        .prog-bar { width: 100%; height: 6px; background: #111; border-radius: 10px; overflow: hidden; }
+        .prog-fill { height: 100%; background: var(--neon-cyan); width: 0%; transition: 0.3s; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="status-bar">
+        <div class="bell-container" onclick="showOrders()">
+            <span class="bell-icon" id="bell-icon">🔔</span>
+            <span class="bell-badge" id="bell-count">0</span>
+        </div>
+        <div class="stat-chip"><div id="net-dot" class="dot dot-red"></div> متصل</div>
+        <div class="stat-chip">الأصول: <span id="asset-count" style="margin-right:8px">0</span></div>
+    </div>
+
+    <div class="panel">
+        <div class="main-title">لوحة تحكم <br> MeGo Code 2</div>
+        
+        <div class="input-group">
+            <label>(Security Key) مفتاح الأمان</label>
+            <input type="password" id="mego-pass" placeholder="••••••••">
+        </div>
+
+        <div class="drop-zone" onclick="document.getElementById('file-input').click()">
+            <p id="file-status">📁 اسحب أو اختر الملفات (الحد الأقصى 10 ملفات)</p>
+            <input type="file" id="file-input" multiple style="display:none">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="input-group">
+                <label>اسم الأداة / الكورس</label>
+                <input type="text" id="tool-name">
+            </div>
+            <div class="input-group">
+                <label>نوع المحتوى</label>
+                <select id="content-type">
+                    <option value="course">📚 كورس / سورس</option>
+                    <option value="tool">🛠️ أداة برمجية</option>
+                    <option value="video">🎬 فيديو شرح</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>لغة البرمجة المختصة</label>
+            <select id="tool-lang">
+                <option value="Sketchware">Sketchware</option>
+                <option value="Flutter">Flutter</option>
+                <option value="Java">Java</option>
+                <option value="Python">Python</option>
+                <option value="Kotlin">Kotlin</option>
+                <option value="PHP">PHP</option>
+                <option value="JavaScript">JavaScript</option>
+                <option value="Other">أخرى / Other</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>وصف المحتوى الفني</label>
+            <textarea id="tool-desc" rows="3"></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="input-group">
+                <label>(EGP) السعر</label>
+                <input type="number" id="tool-price" value="0">
+            </div>
+            <div class="input-group">
+                <label>الكمية / التوافر</label>
+                <div class="qty-wrapper">
+                    <button class="qty-btn" onclick="changeQty(1)">+</button>
+                    <input type="number" id="tool-qty" value="1" style="border:none; width:40px; padding:0; background:transparent">
+                    <button class="qty-btn" onclick="changeQty(-1)">-</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-main" onclick="processDeployment()">🚀 تشفير ونشر الأصول</button>
+
+        <div class="prog-container" id="prog-box">
+            <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAnjhujvWjLe9Z2KsIm-82rRB-00oGiIRw",
+        authDomain: "mego-vip-site.firebaseapp.com",
+        projectId: "mego-vip-site",
+        storageBucket: "mego-vip-site.appspot.com",
+        databaseURL: "https://mego-vip-site-default-rtdb.firebaseio.com/"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const st = firebase.storage();
+
+    db.ref("orders").on("value", snapshot => {
+        const orders = snapshot.val();
+        let pendingCount = 0;
+        if (orders) {
+            for (let id in orders) {
+                if (orders[id].status === "pending") pendingCount++;
+            }
+        }
+        
+        const badge = document.getElementById('bell-count');
+        const icon = document.getElementById('bell-icon');
+        if (pendingCount > 0) {
+            badge.innerText = pendingCount;
+            badge.style.display = 'block';
+            icon.classList.add('bell-active');
+        } else {
+            badge.style.display = 'none';
+            icon.classList.remove('bell-active');
+        }
+    });
+
+    function showOrders() {
+        db.ref("orders").once("value", snapshot => {
+            const orders = snapshot.val();
+            let html = '<div style="max-height: 400px; overflow-y: auto;">';
+            
+            if (!orders) {
+                html += '<p>لا توجد طلبات حالياً</p>';
+            } else {
+                for (let id in orders) {
+                    if (orders[id].status === "pending") {
+                        // عرض رقم الطلب بجانب البيانات
+                        const orderNum = orders[id].orderNumber || "غير محدد";
+                        html += `
+                        <div class="order-item">
+                            <p><span class="order-id-tag">طلب رقم #${orderNum}</span></p>
+                            <p><strong>🛍️ المنتج:</strong> ${orders[id].productName}</p>
+                            <p><strong>📱 رقم المحول:</strong> ${orders[id].senderPhone}</p>
+                            <p><strong>💰 المبلغ:</strong> ${orders[id].amount} EGP</p>
+                            <div class="order-btns">
+                                <button class="btn-approve" onclick="handleOrder('${id}', 'approved')">سماح ✅</button>
+                                <button class="btn-reject" onclick="handleOrder('${id}', 'rejected')">رفض ❌</button>
+                            </div>
+                        </div>`;
+                    }
+                }
+            }
+            html += '</div>';
+
+            Swal.fire({
+                title: 'طلبات الشراء الواردة',
+                html: html,
+                showConfirmButton: false,
+                background: '#0a0a0a',
+                color: '#fff'
+            });
+        });
+    }
+
+    function handleOrder(orderId, newStatus) {
+        const pass = document.getElementById('mego-pass').value;
+        if (pass !== "mego2026") return Swal.fire('خطأ', 'أدخل مفتاح الأمان أولاً', 'error');
+
+        db.ref("orders/" + orderId).update({ status: newStatus }).then(() => {
+            Swal.fire('تم التحديث', `تم ${newStatus === 'approved' ? 'قبول' : 'رفض'} الطلب بنجاح`, 'success');
+            showOrders();
+        });
+    }
+
+    db.ref(".info/connected").on("value", s => {
+        document.getElementById('net-dot').className = s.val() ? "dot dot-green" : "dot dot-red";
+    });
+    db.ref("content").on("value", s => {
+        document.getElementById('asset-count').innerText = s.numChildren();
+    });
+
+    const fileInp = document.getElementById('file-input');
+    fileInp.onchange = (e) => {
+        const count = e.target.files.length;
+        document.getElementById('file-status').innerHTML = `✅ تم اختيار ${count} ملفات<br><small>جاهز للتشفير</small>`;
+    };
+
+    function changeQty(n) {
+        let q = document.getElementById('tool-qty');
+        let v = parseInt(q.value) + n;
+        if(v >= 1) q.value = v;
+    }
+
+    async function processDeployment() {
+        const pass = document.getElementById('mego-pass').value;
+        const files = fileInp.files;
+        if (pass !== "mego2026") return Swal.fire('فشل الأمان', 'كود الدخول غير صحيح يا ميجو!', 'error');
+        if (files.length === 0) return Swal.fire('تنبيه', 'برجاء اختيار الملفات أولاً', 'warning');
+        document.getElementById('prog-box').style.display = 'block';
+        let fileUrls = [];
+        try {
+            for(let i=0; i < files.length; i++) {
+                const ref = st.ref(`mego_store/${Date.now()}_${files[i].name}`);
+                await ref.put(files[i]);
+                const url = await ref.getDownloadURL();
+                fileUrls.push(url);
+                document.getElementById('prog-fill').style.width = ((i+1)/files.length * 100) + '%';
+            }
+            await db.ref("content").push({
+                title: document.getElementById('tool-name').value,
+                type: document.getElementById('content-type').value,
+                language: document.getElementById('tool-lang').value,
+                desc: document.getElementById('tool-desc').value,
+                price: document.getElementById('tool-price').value,
+                quantity: document.getElementById('tool-qty').value,
+                mainUrl: fileUrls[0],
+                allFiles: fileUrls,
+                publisher: "Mego the YouTuber",
+                date: new Date().toLocaleDateString('ar-EG'),
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            Swal.fire('تم التشفير', 'تم نشر الأصول بنجاح إلى السيرفر الرئيسي!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } catch (e) { Swal.fire('خطأ تقني', e.message, 'error'); }
+    }
+</script>
+</body>
+</html>
